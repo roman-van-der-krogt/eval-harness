@@ -7,7 +7,7 @@ from anthropic import Anthropic
 
 from .config import load_config
 from .loader import load_examples
-from .evaluator import evaluate_example
+from .evaluator import evaluate_example, EvaluationError
 from .aggregator import compute_aggregates
 from .reporter import write_results
 
@@ -50,21 +50,29 @@ def main() -> int:
     openai_client = OpenAI()
     anthropic_client = Anthropic()
     results = []
+    failed = []
 
     for i, example in enumerate(load_result.examples, 1):
         print(f"  [{i}/{len(load_result.examples)}] {example.id} (model: {example.model})")
-        result = evaluate_example(
-            example, config,
-            openai_client=openai_client,
-            anthropic_client=anthropic_client
-        )
-        results.append(result)
+        try:
+            result = evaluate_example(
+                example, config,
+                openai_client=openai_client,
+                anthropic_client=anthropic_client
+            )
+            results.append(result)
+        except EvaluationError as e:
+            print(f"    ERROR: {e}")
+            failed.append({"id": example.id, "reason": str(e)})
+
+    if failed:
+        print(f"Warning: {len(failed)} examples failed evaluation")
 
     print("Computing aggregates...")
     aggregates = compute_aggregates(results)
 
     print(f"Writing results to {args.output}...")
-    write_results(results, load_result.skipped, aggregates, args.output)
+    write_results(results, load_result.skipped, failed, aggregates, args.output)
 
     print("Done!")
     return 0

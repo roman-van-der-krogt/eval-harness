@@ -43,12 +43,20 @@ def sample_aggregates():
     }
 
 
-def test_write_results_to_file_with_correct_json_structure(tmp_path, sample_eval_result, sample_skipped, sample_aggregates):
+@pytest.fixture
+def sample_failed():
+    """Create sample failed items for testing."""
+    return [
+        {"id": "fail-001", "reason": "API error after 3 retries"},
+    ]
+
+
+def test_write_results_to_file_with_correct_json_structure(tmp_path, sample_eval_result, sample_skipped, sample_failed, sample_aggregates):
     """Test that write_results creates a file with the correct JSON structure."""
     output_path = tmp_path / "output.json"
     results = [sample_eval_result]
 
-    write_results(results, sample_skipped, sample_aggregates, output_path)
+    write_results(results, sample_skipped, sample_failed, sample_aggregates, output_path)
 
     assert output_path.exists()
 
@@ -57,8 +65,10 @@ def test_write_results_to_file_with_correct_json_structure(tmp_path, sample_eval
 
     assert "results" in data
     assert "skipped" in data
+    assert "failed" in data
     assert len(data["results"]) == 1
     assert len(data["skipped"]) == 2
+    assert len(data["failed"]) == 1
 
     # Verify structure of results
     result = data["results"][0]
@@ -71,6 +81,9 @@ def test_write_results_to_file_with_correct_json_structure(tmp_path, sample_eval
     # Verify skipped items
     assert data["skipped"] == sample_skipped
 
+    # Verify failed items
+    assert data["failed"] == sample_failed
+
 
 def test_creates_parent_directories_if_not_exist(tmp_path, sample_eval_result, sample_aggregates):
     """Test that write_results creates parent directories if they don't exist."""
@@ -79,7 +92,7 @@ def test_creates_parent_directories_if_not_exist(tmp_path, sample_eval_result, s
     # Verify parent directories don't exist yet
     assert not output_path.parent.exists()
 
-    write_results([sample_eval_result], [], sample_aggregates, output_path)
+    write_results([sample_eval_result], [], [], sample_aggregates, output_path)
 
     # Verify directories were created and file exists
     assert output_path.parent.exists()
@@ -90,7 +103,7 @@ def test_handles_empty_results_list(tmp_path):
     """Test that write_results handles an empty results list correctly."""
     output_path = tmp_path / "empty_results.json"
 
-    write_results([], [], {}, output_path)
+    write_results([], [], [], {}, output_path)
 
     assert output_path.exists()
 
@@ -99,6 +112,7 @@ def test_handles_empty_results_list(tmp_path):
 
     assert data["results"] == []
     assert data["skipped"] == []
+    assert data["failed"] == []
 
 
 def test_handles_empty_skipped_list(tmp_path, sample_eval_result, sample_aggregates):
@@ -106,7 +120,7 @@ def test_handles_empty_skipped_list(tmp_path, sample_eval_result, sample_aggrega
     output_path = tmp_path / "no_skipped.json"
     results = [sample_eval_result]
 
-    write_results(results, [], sample_aggregates, output_path)
+    write_results(results, [], [], sample_aggregates, output_path)
 
     assert output_path.exists()
 
@@ -115,13 +129,14 @@ def test_handles_empty_skipped_list(tmp_path, sample_eval_result, sample_aggrega
 
     assert len(data["results"]) == 1
     assert data["skipped"] == []
+    assert data["failed"] == []
 
 
 def test_includes_skipped_items_in_output(tmp_path, sample_skipped):
     """Test that skipped items are correctly included in the output."""
     output_path = tmp_path / "with_skipped.json"
 
-    write_results([], sample_skipped, {}, output_path)
+    write_results([], sample_skipped, [], {}, output_path)
 
     with open(output_path) as f:
         data = json.load(f)
@@ -212,13 +227,14 @@ def test_write_results_with_multiple_results(tmp_path):
         "by_model_and_prompt_version": {}
     }
 
-    write_results(results, skipped, aggregates, output_path)
+    write_results(results, skipped, [], aggregates, output_path)
 
     with open(output_path) as f:
         data = json.load(f)
 
     assert len(data["results"]) == 3
     assert len(data["skipped"]) == 1
+    assert len(data["failed"]) == 0
 
     # Verify each result has correct structure
     for i, result in enumerate(data["results"]):
@@ -237,7 +253,7 @@ def test_write_results_json_is_properly_formatted(tmp_path, sample_eval_result, 
     """Test that the output JSON is properly formatted with indentation."""
     output_path = tmp_path / "formatted.json"
 
-    write_results([sample_eval_result], [], sample_aggregates, output_path)
+    write_results([sample_eval_result], [], [], sample_aggregates, output_path)
 
     # Read the raw file content to check formatting
     with open(output_path) as f:
@@ -257,7 +273,7 @@ def test_write_results_includes_aggregates(tmp_path, sample_eval_result, sample_
     """Test that write_results includes aggregates in the output."""
     output_path = tmp_path / "with_aggregates.json"
 
-    write_results([sample_eval_result], [], sample_aggregates, output_path)
+    write_results([sample_eval_result], [], [], sample_aggregates, output_path)
 
     assert output_path.exists()
 

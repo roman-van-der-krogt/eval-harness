@@ -11,9 +11,13 @@ from eval_harness.evaluator import (
     _build_prompt,
     _score_with_openai,
     _score_with_anthropic,
+    EvaluationError,
+    MAX_RETRIES,
 )
 from eval_harness.loader import Example
 from eval_harness.config import Config
+from openai import RateLimitError, APIConnectionError, APIError
+from anthropic import RateLimitError as AnthropicRateLimitError, APIConnectionError as AnthropicAPIConnectionError, APIError as AnthropicAPIError
 
 
 @pytest.fixture
@@ -380,3 +384,131 @@ class TestRubrics:
         assert "1-5 scale" in TONE_RUBRIC
         assert "5:" in TONE_RUBRIC
         assert "1:" in TONE_RUBRIC
+
+
+class TestErrorHandling:
+    """Tests for error handling and retry logic."""
+
+    def test_openai_retries_on_rate_limit(self, mock_openai_client, sample_example, monkeypatch):
+        """Test that OpenAI scoring retries on rate limit errors."""
+        monkeypatch.setattr("eval_harness.evaluator.time.sleep", lambda x: None)
+
+        # Fail twice with rate limit, succeed on third try
+        mock_openai_client.chat.completions.create.side_effect = [
+            RateLimitError("Rate limited", response=Mock(status_code=429), body={}),
+            RateLimitError("Rate limited", response=Mock(status_code=429), body={}),
+            create_mock_completion(4, "Success after retries"),
+        ]
+
+        score = _score_with_openai(
+            mock_openai_client, sample_example, "relevance", RELEVANCE_RUBRIC, "gpt-4o-mini"
+        )
+
+        assert score.score == 4
+        assert mock_openai_client.chat.completions.create.call_count == 3
+
+    def test_openai_raises_after_max_retries(self, mock_openai_client, sample_example, monkeypatch):
+        """Test that OpenAI scoring raises EvaluationError after max retries."""
+        monkeypatch.setattr("eval_harness.evaluator.time.sleep", lambda x: None)
+
+        mock_openai_client.chat.completions.create.side_effect = RateLimitError(
+            "Rate limited", response=Mock(status_code=429), body={}
+        )
+
+        with pytest.raises(EvaluationError) as exc_info:
+            _score_with_openai(
+                mock_openai_client, sample_example, "relevance", RELEVANCE_RUBRIC, "gpt-4o-mini"
+            )
+
+        assert f"Failed after {MAX_RETRIES} retries" in str(exc_info.value)
+        assert mock_openai_client.chat.completions.create.call_count == MAX_RETRIES
+
+    def test_openai_raises_on_api_error(self, mock_openai_client, sample_example):
+        """Test that OpenAI scoring raises EvaluationError on non-retryable API errors."""
+        mock_openai_client.chat.completions.create.side_effect = APIError(
+            "Bad request", request=Mock(), body={}
+        )
+
+        with pytest.raises(EvaluationError) as exc_info:
+            _score_with_openai(
+                mock_openai_client, sample_example, "relevance", RELEVANCE_RUBRIC, "gpt-4o-mini"
+            )
+
+        assert "OpenAI API error" in str(exc_info.value)
+        assert mock_openai_client.chat.completions.create.call_count == 1
+
+    def test_openai_raises_on_invalid_json(self, mock_openai_client, sample_example):
+        """Test that OpenAI scoring raises EvaluationError on invalid JSON response."""
+        mock_response = Mock()
+        mock_response.choices = [Mock()]
+        mock_response.choices[0].message.content = "not valid json"
+        mock_openai_client.chat.completions.create.return_value = mock_response
+
+        with pytest.raises(EvaluationError) as exc_info:
+            _score_with_openai(
+                mock_openai_client, sample_example, "relevance", RELEVANCE_RUBRIC, "gpt-4o-mini"
+            )
+
+        assert "Invalid response format" in str(exc_info.value)
+
+    def test_anthropic_retries_on_rate_limit(self, mock_anthropic_client, sample_example, monkeypatch):
+        """Test that Anthropic scoring retries on rate limit errors."""
+        monkeypatch.setattr("eval_harness.evaluator.time.sleep", lambda x: None)
+
+        # Fail twice with rate limit, succeed on third try
+        mock_anthropic_client.messages.create.side_effect = [
+            AnthropicRateLimitError("Rate limited", response=Mock(status_code=429), body={}),
+            AnthropicRateLimitError("Rate limited", response=Mock(status_code=429), body={}),
+            create_mock_anthropic_message(5, "Success after retries"),
+        ]
+
+        score = _score_with_anthropic(
+            mock_anthropic_client, sample_example, "tone", TONE_RUBRIC, "claude-sonnet-4-20250514"
+        )
+
+        assert score.score == 5
+        assert mock_anthropic_client.messages.create.call_count == 3
+
+    def test_anthropic_raises_after_max_retries(self, mock_anthropic_client, sample_example, monkeypatch):
+        """Test that Anthropic scoring raises EvaluationError after max retries."""
+        monkeypatch.setattr("eval_harness.evaluator.time.sleep", lambda x: None)
+
+        mock_anthropic_client.messages.create.side_effect = AnthropicRateLimitError(
+            "Rate limited", response=Mock(status_code=429), body={}
+        )
+
+        with pytest.raises(EvaluationError) as exc_info:
+            _score_with_anthropic(
+                mock_anthropic_client, sample_example, "tone", TONE_RUBRIC, "claude-sonnet-4-20250514"
+            )
+
+        assert f"Failed after {MAX_RETRIES} retries" in str(exc_info.value)
+        assert mock_anthropic_client.messages.create.call_count == MAX_RETRIES
+
+    def test_anthropic_raises_on_api_error(self, mock_anthropic_client, sample_example):
+        """Test that Anthropic scoring raises EvaluationError on non-retryable API errors."""
+        mock_anthropic_client.messages.create.side_effect = AnthropicAPIError(
+            "Bad request", request=Mock(), body={}
+        )
+
+        with pytest.raises(EvaluationError) as exc_info:
+            _score_with_anthropic(
+                mock_anthropic_client, sample_example, "tone", TONE_RUBRIC, "claude-sonnet-4-20250514"
+            )
+
+        assert "Anthropic API error" in str(exc_info.value)
+        assert mock_anthropic_client.messages.create.call_count == 1
+
+    def test_anthropic_raises_on_invalid_json(self, mock_anthropic_client, sample_example):
+        """Test that Anthropic scoring raises EvaluationError on invalid JSON response."""
+        mock_response = Mock()
+        mock_response.content = [Mock()]
+        mock_response.content[0].text = "not valid json"
+        mock_anthropic_client.messages.create.return_value = mock_response
+
+        with pytest.raises(EvaluationError) as exc_info:
+            _score_with_anthropic(
+                mock_anthropic_client, sample_example, "tone", TONE_RUBRIC, "claude-sonnet-4-20250514"
+            )
+
+        assert "Invalid response format" in str(exc_info.value)

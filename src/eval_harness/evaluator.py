@@ -1,10 +1,17 @@
 import json
+import time
 from dataclasses import dataclass
-from openai import OpenAI
-from anthropic import Anthropic
+from openai import OpenAI, APIError, RateLimitError, APIConnectionError
+from anthropic import Anthropic, APIError as AnthropicAPIError, RateLimitError as AnthropicRateLimitError, APIConnectionError as AnthropicAPIConnectionError
 
 from .loader import Example
 from .config import Config, get_provider_from_model
+
+
+# Retry configuration
+MAX_RETRIES = 3
+INITIAL_BACKOFF = 1.0  # seconds
+BACKOFF_MULTIPLIER = 2.0
 
 
 @dataclass
@@ -20,6 +27,11 @@ class EvalResult:
     prompt_version: str
     relevance: Score
     tone: Score
+
+
+class EvaluationError(Exception):
+    """Raised when evaluation fails after all retries."""
+    pass
 
 
 RELEVANCE_RUBRIC = """
@@ -94,15 +106,31 @@ def _score_with_openai(
     rubric: str,
     model: str
 ) -> Score:
-    """Score using OpenAI."""
+    """Score using OpenAI with retry on transient errors."""
     prompt = _build_prompt(example, dimension, rubric)
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"},
-    )
-    result = json.loads(response.choices[0].message.content)
-    return Score(score=result["score"], reasoning=result["reasoning"])
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+            )
+            result = json.loads(response.choices[0].message.content)
+            return Score(score=result["score"], reasoning=result["reasoning"])
+        except (RateLimitError, APIConnectionError) as e:
+            last_error = e
+            if attempt < MAX_RETRIES - 1:
+                backoff = INITIAL_BACKOFF * (BACKOFF_MULTIPLIER ** attempt)
+                time.sleep(backoff)
+        except APIError as e:
+            # Non-retryable API error
+            raise EvaluationError(f"OpenAI API error: {e}") from e
+        except (json.JSONDecodeError, KeyError) as e:
+            raise EvaluationError(f"Invalid response format: {e}") from e
+
+    raise EvaluationError(f"Failed after {MAX_RETRIES} retries: {last_error}")
 
 
 def _score_with_anthropic(
@@ -112,12 +140,28 @@ def _score_with_anthropic(
     rubric: str,
     model: str
 ) -> Score:
-    """Score using Anthropic."""
+    """Score using Anthropic with retry on transient errors."""
     prompt = _build_prompt(example, dimension, rubric)
-    response = client.messages.create(
-        model=model,
-        max_tokens=256,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    result = json.loads(response.content[0].text)
-    return Score(score=result["score"], reasoning=result["reasoning"])
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.messages.create(
+                model=model,
+                max_tokens=256,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            result = json.loads(response.content[0].text)
+            return Score(score=result["score"], reasoning=result["reasoning"])
+        except (AnthropicRateLimitError, AnthropicAPIConnectionError) as e:
+            last_error = e
+            if attempt < MAX_RETRIES - 1:
+                backoff = INITIAL_BACKOFF * (BACKOFF_MULTIPLIER ** attempt)
+                time.sleep(backoff)
+        except AnthropicAPIError as e:
+            # Non-retryable API error
+            raise EvaluationError(f"Anthropic API error: {e}") from e
+        except (json.JSONDecodeError, KeyError) as e:
+            raise EvaluationError(f"Invalid response format: {e}") from e
+
+    raise EvaluationError(f"Failed after {MAX_RETRIES} retries: {last_error}")

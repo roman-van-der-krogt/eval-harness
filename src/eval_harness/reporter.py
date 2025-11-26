@@ -7,6 +7,7 @@ from .evaluator import EvalResult
 def write_results(
     results: list[EvalResult],
     skipped: list[dict],
+    failed: list[dict],
     aggregates: dict,
     output_path: Path
 ) -> None:
@@ -14,6 +15,7 @@ def write_results(
     output = {
         "results": [_result_to_dict(r) for r in results],
         "skipped": skipped,
+        "failed": failed,
         "aggregates": aggregates
     }
 
