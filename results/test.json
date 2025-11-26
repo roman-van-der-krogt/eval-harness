@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "id": "test",
+      "relevance": {
+        "score": 5,
+        "reasoning": "good"
+      },
+      "tone": {
+        "score": 4,
+        "reasoning": "ok"
+      }
+    }
+  ],
+  "skipped": []
+}
