@@ -2,37 +2,130 @@
   "results": [
     {
       "id": "ticket-001",
+      "model": "gpt-4o",
+      "prompt_version": "v1.0",
       "relevance": {
         "score": 5,
-        "reasoning": "The response directly addresses the OutOfMemoryError issue by suggesting an appropriate solution to increase the JVM heap size. It also mentions checking container memory limits, which is relevant advice for builds running in a containerized environment. Overall, the response is technically accurate and stays on topic."
+        "reasoning": "The response directly addresses the Java OutOfMemoryError heap space issue mentioned in the ticket, provides a specific technical solution (-Xmx4g flag), explains where to apply it (JAVA_OPTS in Jenkins pipeline), and includes relevant additional consideration for containerized environments. All information is technically accurate and directly relevant to solving the reported problem."
       },
       "tone": {
         "score": 5,
-        "reasoning": "The response is professional and concise, providing a clear solution to the user's problem without unnecessary elaboration or jargon."
+        "reasoning": "The response is professional, concise, and directly addresses the problem. It provides clear technical guidance with specific commands and considers additional context (container limits) without unnecessary verbosity or informal language."
       }
     },
     {
       "id": "ticket-002",
+      "model": "claude-sonnet-4-20250514",
+      "prompt_version": "v0.9",
       "relevance": {
         "score": 2,
-        "reasoning": "The response is loosely related to the ticket issue; it suggests basic troubleshooting steps, like restarting, but fails to directly address the database connection problem and lacks technical detail. It also includes overly casual language that detracts from the seriousness of the issue."
+        "reasoning": "The response is loosely related to the issue of connecting to the staging database but does not provide any specific guidance or solutions related to database connection timeouts. It includes off-topic humor and overly simplistic advice, which does not adequately address the user's problem."
       },
       "tone": {
         "score": 2,
-        "reasoning": "The response is too informal and casual for a support setting. Phrases like 'so like' and 'lol' undermine professionalism, and the suggestion to turn it off and on again is overly simplistic for a technical issue."
+        "reasoning": "The response is informal and overly casual, which is not suitable for a technical support context. Phrases like 'so like' and 'lol' contribute to an unprofessional tone."
       }
     },
     {
       "id": "ticket-003",
+      "model": "gpt-4o",
+      "prompt_version": "v1.0",
       "relevance": {
         "score": 5,
-        "reasoning": "The response directly addresses the ticket issue by providing a clear, step-by-step process for rotating API keys for the payment service. It includes all necessary steps and references a runbook for further assistance, making it both technically accurate and relevant."
+        "reasoning": "The response directly addresses the API key rotation request with a clear, step-by-step process that covers all essential steps: generating new keys, updating them securely, deploying changes, testing, and cleanup. It's technically sound and includes a helpful reference to documentation. No irrelevant information is present."
       },
       "tone": {
         "score": 5,
-        "reasoning": "The response is professional and concise, providing a clear step-by-step process without any unnecessary information or casual language."
+        "reasoning": "Response is perfectly professional and concise - provides clear step-by-step instructions without unnecessary words, includes helpful reference documentation, and maintains appropriate technical tone for the audience."
       }
     }
   ],
-  "skipped": []
+  "skipped": [],
+  "failed": [],
+  "aggregates": {
+    "by_model": {
+      "gpt-4o": {
+        "count": 2,
+        "relevance": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5
+        },
+        "tone": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5
+        }
+      },
+      "claude-sonnet-4-20250514": {
+        "count": 1,
+        "relevance": {
+          "mean": 2.0,
+          "min": 2,
+          "max": 2
+        },
+        "tone": {
+          "mean": 2.0,
+          "min": 2,
+          "max": 2
+        }
+      }
+    },
+    "by_prompt_version": {
+      "v1.0": {
+        "count": 2,
+        "relevance": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5
+        },
+        "tone": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5
+        }
+      },
+      "v0.9": {
+        "count": 1,
+        "relevance": {
+          "mean": 2.0,
+          "min": 2,
+          "max": 2
+        },
+        "tone": {
+          "mean": 2.0,
+          "min": 2,
+          "max": 2
+        }
+      }
+    },
+    "by_model_and_prompt_version": {
+      "gpt-4o|v1.0": {
+        "count": 2,
+        "relevance": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5
+        },
+        "tone": {
+          "mean": 5.0,
+          "min": 5,
+          "max": 5
+        }
+      },
+      "claude-sonnet-4-20250514|v0.9": {
+        "count": 1,
+        "relevance": {
+          "mean": 2.0,
+          "min": 2,
+          "max": 2
+        },
+        "tone": {
+          "mean": 2.0,
+          "min": 2,
+          "max": 2
+        }
+      }
+    }
+  }
 }
