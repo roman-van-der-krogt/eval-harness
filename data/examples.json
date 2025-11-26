@@ -2,16 +2,22 @@
   {
     "id": "ticket-001",
     "ticket": "Jenkins pipeline failing with OOM error on build step. Getting 'java.lang.OutOfMemoryError: Java heap space' after about 10 minutes into the build.",
-    "response": "This typically happens when the heap size is too small for your build. Try increasing the JVM heap size by adding '-Xmx4g' to your JAVA_OPTS in the Jenkins pipeline configuration. If you're running in a container, also check that the container memory limits are set appropriately."
+    "response": "This typically happens when the heap size is too small for your build. Try increasing the JVM heap size by adding '-Xmx4g' to your JAVA_OPTS in the Jenkins pipeline configuration. If you're running in a container, also check that the container memory limits are set appropriately.",
+    "model": "gpt-4o",
+    "prompt_version": "v1.0"
   },
   {
     "id": "ticket-002",
     "ticket": "Can't connect to the staging database from my local machine. Connection times out.",
-    "response": "Hey! So like, databases are tricky sometimes you know? Have you tried turning it off and on again? Also maybe check if your computer is connected to the internet lol. Databases need internet to work I think."
+    "response": "Hey! So like, databases are tricky sometimes you know? Have you tried turning it off and on again? Also maybe check if your computer is connected to the internet lol. Databases need internet to work I think.",
+    "model": "claude-sonnet-4-20250514",
+    "prompt_version": "v0.9"
   },
   {
     "id": "ticket-003",
     "ticket": "Need to rotate the API keys for the payment service. What's the process?",
-    "response": "To rotate payment service API keys: 1) Generate new keys in the payment provider dashboard, 2) Update the keys in Vault under 'secrets/payment/api-keys', 3) Deploy the payment service to pick up new keys, 4) Verify transactions work, 5) Revoke old keys in provider dashboard. See runbook: docs/runbooks/payment-key-rotation.md"
+    "response": "To rotate payment service API keys: 1) Generate new keys in the payment provider dashboard, 2) Update the keys in Vault under 'secrets/payment/api-keys', 3) Deploy the payment service to pick up new keys, 4) Verify transactions work, 5) Revoke old keys in provider dashboard. See runbook: docs/runbooks/payment-key-rotation.md",
+    "model": "gpt-4o",
+    "prompt_version": "v1.0"
   }
 ]

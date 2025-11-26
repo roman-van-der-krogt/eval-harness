@@ -8,6 +8,8 @@ class Example:
     id: str
     ticket: str
     response: str
+    model: str
+    prompt_version: str
 
 
 @dataclass
@@ -35,7 +37,9 @@ def load_examples(path: Path) -> LoadResult:
         examples.append(Example(
             id=item["id"],
             ticket=item["ticket"],
-            response=item["response"]
+            response=item["response"],
+            model=item["model"],
+            prompt_version=item["prompt_version"]
         ))
 
     return LoadResult(examples=examples, skipped=skipped)
@@ -46,7 +50,7 @@ def _validate_example(item: dict) -> str | None:
     if not isinstance(item, dict):
         return "Item is not an object"
 
-    for field in ("id", "ticket", "response"):
+    for field in ("id", "ticket", "response", "model", "prompt_version"):
         if field not in item:
             return f"Missing '{field}' field"
         if not isinstance(item[field], str):

@@ -1,0 +1,7 @@
+judge_mapping:
+  openai: anthropic
+  anthropic: openai
+
+judge_models:
+  openai: gpt-4o-mini
+  anthropic: claude-sonnet-4-20250514

@@ -1,8 +1,10 @@
 import json
 from dataclasses import dataclass
 from openai import OpenAI
+from anthropic import Anthropic
 
 from .loader import Example
+from .config import Config, get_provider_from_model
 
 
 @dataclass
@@ -14,6 +16,8 @@ class Score:
 @dataclass
 class EvalResult:
     id: str
+    model: str
+    prompt_version: str
     relevance: Score
     tone: Score
 
@@ -37,23 +41,40 @@ Rate the tone of this support bot response on a 1-5 scale:
 """
 
 
-def evaluate_example(client: OpenAI, example: Example, model: str = "gpt-4o-mini") -> EvalResult:
-    """Evaluate a single example for relevance and tone."""
-    relevance = _score_dimension(client, example, "relevance", RELEVANCE_RUBRIC, model)
-    tone = _score_dimension(client, example, "tone", TONE_RUBRIC, model)
-
-    return EvalResult(id=example.id, relevance=relevance, tone=tone)
-
-
-def _score_dimension(
-    client: OpenAI,
+def evaluate_example(
     example: Example,
-    dimension: str,
-    rubric: str,
-    model: str
-) -> Score:
-    """Score a single dimension using the LLM judge."""
-    prompt = f"""You are evaluating a support bot response for {dimension}.
+    config: Config,
+    openai_client: OpenAI | None = None,
+    anthropic_client: Anthropic | None = None,
+) -> EvalResult:
+    """Evaluate a single example for relevance and tone."""
+    response_provider = get_provider_from_model(example.model)
+    judge_provider = config.judge_mapping[response_provider]
+    judge_model = config.judge_models[judge_provider]
+
+    if judge_provider == "openai":
+        if openai_client is None:
+            openai_client = OpenAI()
+        relevance = _score_with_openai(openai_client, example, "relevance", RELEVANCE_RUBRIC, judge_model)
+        tone = _score_with_openai(openai_client, example, "tone", TONE_RUBRIC, judge_model)
+    else:
+        if anthropic_client is None:
+            anthropic_client = Anthropic()
+        relevance = _score_with_anthropic(anthropic_client, example, "relevance", RELEVANCE_RUBRIC, judge_model)
+        tone = _score_with_anthropic(anthropic_client, example, "tone", TONE_RUBRIC, judge_model)
+
+    return EvalResult(
+        id=example.id,
+        model=example.model,
+        prompt_version=example.prompt_version,
+        relevance=relevance,
+        tone=tone
+    )
+
+
+def _build_prompt(example: Example, dimension: str, rubric: str) -> str:
+    """Build the scoring prompt."""
+    return f"""You are evaluating a support bot response for {dimension}.
 
 TICKET:
 {example.ticket}
@@ -63,13 +84,40 @@ RESPONSE:
 
 {rubric}
 
-Respond with JSON: {{"score": <1-5>, "reasoning": "<brief explanation>"}}"""
+Respond with JSON only: {{"score": <1-5>, "reasoning": "<brief explanation>"}}"""
 
+
+def _score_with_openai(
+    client: OpenAI,
+    example: Example,
+    dimension: str,
+    rubric: str,
+    model: str
+) -> Score:
+    """Score using OpenAI."""
+    prompt = _build_prompt(example, dimension, rubric)
     response = client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
-
     result = json.loads(response.choices[0].message.content)
+    return Score(score=result["score"], reasoning=result["reasoning"])
+
+
+def _score_with_anthropic(
+    client: Anthropic,
+    example: Example,
+    dimension: str,
+    rubric: str,
+    model: str
+) -> Score:
+    """Score using Anthropic."""
+    prompt = _build_prompt(example, dimension, rubric)
+    response = client.messages.create(
+        model=model,
+        max_tokens=256,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    result = json.loads(response.content[0].text)
     return Score(score=result["score"], reasoning=result["reasoning"])
