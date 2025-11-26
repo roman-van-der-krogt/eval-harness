@@ -1,0 +1,38 @@
+{
+  "results": [
+    {
+      "id": "ticket-001",
+      "relevance": {
+        "score": 5,
+        "reasoning": "The response directly addresses the OutOfMemoryError issue by suggesting an appropriate solution to increase the JVM heap size. It also mentions checking container memory limits, which is relevant advice for builds running in a containerized environment. Overall, the response is technically accurate and stays on topic."
+      },
+      "tone": {
+        "score": 5,
+        "reasoning": "The response is professional and concise, providing a clear solution to the user's problem without unnecessary elaboration or jargon."
+      }
+    },
+    {
+      "id": "ticket-002",
+      "relevance": {
+        "score": 2,
+        "reasoning": "The response is loosely related to the ticket issue; it suggests basic troubleshooting steps, like restarting, but fails to directly address the database connection problem and lacks technical detail. It also includes overly casual language that detracts from the seriousness of the issue."
+      },
+      "tone": {
+        "score": 2,
+        "reasoning": "The response is too informal and casual for a support setting. Phrases like 'so like' and 'lol' undermine professionalism, and the suggestion to turn it off and on again is overly simplistic for a technical issue."
+      }
+    },
+    {
+      "id": "ticket-003",
+      "relevance": {
+        "score": 5,
+        "reasoning": "The response directly addresses the ticket issue by providing a clear, step-by-step process for rotating API keys for the payment service. It includes all necessary steps and references a runbook for further assistance, making it both technically accurate and relevant."
+      },
+      "tone": {
+        "score": 5,
+        "reasoning": "The response is professional and concise, providing a clear step-by-step process without any unnecessary information or casual language."
+      }
+    }
+  ],
+  "skipped": []
+}
